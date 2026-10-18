@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Markdown Editor</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%232563eb'/%3E%3Cpath d='M12 44V20h7l6 8 6-8h7v24h-7V31l-6 8-6-8v13zm34 0-9-11h6V20h6v13h6z' fill='%23fff'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="vendor/codemirror.min.css">
+<link rel="stylesheet" href="vendor/katex/katex.min.css">
+<link rel="stylesheet" id="hljs-light" href="vendor/hljs-github.min.css">
+<link rel="stylesheet" id="hljs-dark" href="vendor/hljs-github-dark.min.css" disabled>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+
+<header class="toolbar" id="toolbar">
+  <div class="tb-group">
+    <button class="icon-btn" data-cmd="toggleSidebar" title="Toggle sidebar (Ctrl+\)"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></svg></button>
+    <input id="doc-title" class="doc-title" spellcheck="false" title="Document title" value="Untitled">
+    <span id="dirty-dot" class="dirty-dot" title="Unsaved changes to file" hidden>●</span>
+  </div>
+
+  <div class="tb-group">
+    <div class="menu">
+      <button class="btn" data-menu="file-menu">File ▾</button>
+      <div class="menu-list" id="file-menu">
+        <button data-cmd="newDoc">New document<kbd>Ctrl+Alt+N</kbd></button>
+        <button data-cmd="openFile">Open file…<kbd>Ctrl+O</kbd></button>
+        <button data-cmd="save">Save to file<kbd>Ctrl+S</kbd></button>
+        <button data-cmd="saveAs">Save as…<kbd>Ctrl+Shift+S</kbd></button>
+        <hr>
+        <button data-cmd="exportHtml">Export HTML</button>
+        <button data-cmd="copyHtml">Copy rendered HTML</button>
+        <button data-cmd="downloadMd">Download .md</button>
+        <hr>
+        <button data-cmd="duplicateDoc">Duplicate document</button>
+        <button data-cmd="deleteDoc" class="danger">Delete document</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="tb-group fmt" id="fmt-group">
+    <button class="icon-btn" data-cmd="bold" title="Bold (Ctrl+B)"><b>B</b></button>
+    <button class="icon-btn" data-cmd="italic" title="Italic (Ctrl+I)"><i>I</i></button>
+    <button class="icon-btn" data-cmd="strike" title="Strikethrough (Ctrl+Shift+X)"><s>S</s></button>
+    <div class="menu">
+      <button class="icon-btn" data-menu="heading-menu" title="Heading (Ctrl+Shift+H cycles)">H▾</button>
+      <div class="menu-list" id="heading-menu">
+        <button data-cmd="heading" data-arg="1"><span class="h1s">Heading 1</span></button>
+        <button data-cmd="heading" data-arg="2"><span class="h2s">Heading 2</span></button>
+        <button data-cmd="heading" data-arg="3"><span class="h3s">Heading 3</span></button>
+        <button data-cmd="heading" data-arg="4">Heading 4</button>
+        <button data-cmd="heading" data-arg="5">Heading 5</button>
+        <button data-cmd="heading" data-arg="6">Heading 6</button>
+        <button data-cmd="heading" data-arg="0">Paragraph</button>
+      </div>
+    </div>
+    <span class="sep"></span>
+    <button class="icon-btn" data-cmd="ul" title="Bullet list">•≡</button>
+    <button class="icon-btn" data-cmd="ol" title="Numbered list">1≡</button>
+    <button class="icon-btn" data-cmd="task" title="Task list"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="6" height="6" rx="1"/><path d="m4.5 8 1 1 2-2"/><path d="M13 8h8M13 16h8"/><rect x="3" y="13" width="6" height="6" rx="1"/></svg></button>
+    <button class="icon-btn" data-cmd="quote" title="Quote (Ctrl+Shift+.)"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21c3 0 7-1 7-8V5c0-1.25-.76-2-2-2H4c-1.25 0-2 .75-2 1.97V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .01-1 1.03V20c0 1 0 1 1 1z"/><path d="M15 21c3 0 7-1 7-8V5c0-1.25-.76-2-2-2h-4c-1.25 0-2 .75-2 1.97V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3c0 1 0 1 1 1z"/></svg></button>
+    <span class="sep"></span>
+    <button class="icon-btn" data-cmd="link" title="Link (Ctrl+K)"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></button>
+    <button class="icon-btn" data-cmd="image" title="Image"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></svg></button>
+    <button class="icon-btn mono" data-cmd="code" title="Inline code (Ctrl+`)">`c`</button>
+    <button class="icon-btn mono" data-cmd="codeBlock" title="Code block (Ctrl+Alt+C)">{ }</button>
+    <button class="icon-btn" data-cmd="table" title="Insert table"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg></button>
+    <div class="menu">
+      <button class="btn" data-menu="insert-menu">Insert ▾</button>
+      <div class="menu-list" id="insert-menu">
+        <button data-cmd="hr">Horizontal rule</button>
+        <button data-cmd="footnote">Footnote</button>
+        <button data-cmd="mathInline">Inline math $…$</button>
+        <button data-cmd="mathBlock">Math block $$…$$</button>
+        <button data-cmd="mermaid">Mermaid diagram</button>
+        <button data-cmd="details">Collapsible section</button>
+        <button data-cmd="toc">Table of contents</button>
+        <button data-cmd="date">Today's date</button>
+        <button data-cmd="frontmatter">Front matter</button>
+        <hr>
+        <button data-cmd="formatTable">Format table at cursor<kbd>Ctrl+Alt+T</kbd></button>
+      </div>
+    </div>
+  </div>
+
+  <div class="tb-group right">
+    <div class="seg" role="tablist" aria-label="View mode">
+      <button data-mode="edit" title="Editor only (Ctrl+Alt+1)">Edit</button>
+      <button data-mode="split" title="Side by side (Ctrl+Alt+2)">Split</button>
+      <button data-mode="preview" title="Preview only (Ctrl+Alt+3)">Preview</button>
+    </div>
+    <button class="icon-btn" data-cmd="find" title="Find & replace (Ctrl+F / Ctrl+H)"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></button>
+    <button class="icon-btn" data-cmd="toggleSync" id="sync-btn" title="Sync scrolling"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7 15 5 5 5-5M7 9l5-5 5 5"/></svg></button>
+    <button class="icon-btn" data-cmd="cycleTheme" id="theme-btn" title="Theme"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3v18a9 9 0 0 0 0-18z" fill="currentColor"/></svg></button>
+    <button class="icon-btn" data-cmd="focusMode" title="Focus mode (Ctrl+Shift+F)"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></svg></button>
+    <button class="icon-btn" data-cmd="settings" title="Settings"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg></button>
+    <button class="icon-btn" data-cmd="help" title="Shortcuts (F1)">?</button>
+  </div>
+</header>
+
+<div class="main">
+  <aside id="sidebar" class="sidebar">
+    <div class="side-tabs">
+      <button data-side="docs">Documents</button>
+      <button data-side="outline">Outline</button>
+    </div>
+    <div class="side-panel" id="side-docs">
+      <div class="side-actions">
+        <input id="doc-search" type="search" placeholder="Search documents…">
+        <button class="icon-btn" data-cmd="newDoc" title="New document"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+      </div>
+      <ul id="doc-list" class="doc-list"></ul>
+    </div>
+    <div class="side-panel" id="side-outline" hidden>
+      <ul id="outline" class="outline"></ul>
+    </div>
+  </aside>
+
+  <section id="workspace" class="workspace">
+    <div id="editor-pane" class="pane editor-pane">
+      <div id="findbar" class="findbar" hidden>
+        <div class="find-row">
+          <input id="find-input" placeholder="Find" spellcheck="false">
+          <button class="opt" id="find-case" title="Match case">Aa</button>
+          <button class="opt" id="find-word" title="Whole word">ab</button>
+          <button class="opt" id="find-regex" title="Regular expression">.*</button>
+          <span id="find-count" class="find-count"></span>
+          <button class="icon-btn" id="find-prev" title="Previous (Shift+Enter)">↑</button>
+          <button class="icon-btn" id="find-next" title="Next (Enter)">↓</button>
+          <button class="icon-btn" id="find-close" title="Close (Esc)">✕</button>
+        </div>
+        <div class="find-row" id="replace-row">
+          <input id="replace-input" placeholder="Replace" spellcheck="false">
+          <button class="btn small" id="replace-one">Replace</button>
+          <button class="btn small" id="replace-all">All</button>
+        </div>
+      </div>
+      <div id="editor" class="editor"></div>
+      <div id="mathbar" class="mathbar" role="toolbar" aria-label="LaTeX math" hidden>
+        <div class="mb-head">
+          <span id="mb-ctx" class="mb-ctx"></span>
+          <div id="mb-tabs" class="mb-tabs" role="tablist"></div>
+          <button class="icon-btn" id="mb-close" title="Hide until the cursor leaves this math (Esc)">✕</button>
+        </div>
+        <div id="mb-palette" class="mb-palette"></div>
+      </div>
+    </div>
+    <div id="resizer" class="resizer" title="Drag to resize, double-click to reset"></div>
+    <div id="preview-pane" class="pane preview-pane">
+      <article id="preview" class="markdown-body"></article>
+    </div>
+  </section>
+</div>
+
+<footer class="statusbar">
+  <span id="st-pos">Ln 1, Col 1</span>
+  <span id="st-sel"></span>
+  <span class="grow"></span>
+  <span id="st-words">0 words</span>
+  <span id="st-chars">0 chars</span>
+  <span id="st-read">0 min read</span>
+  <span id="st-save">Saved</span>
+</footer>
+
+<dialog id="settings-dlg" class="dlg">
+  <form method="dialog">
+    <h2>Settings</h2>
+    <div class="grid">
+      <label>Theme
+        <select name="theme"><option value="auto">System</option><option value="light">Light</option><option value="dark">Dark</option><option value="sepia">Sepia</option></select></label>
+      <label>Preview style
+        <select name="previewStyle"><option value="github">GitHub</option><option value="serif">Book (serif)</option><option value="academic">Academic</option></select></label>
+      <label>Editor font
+        <select name="editorFont"><option value="mono">Monospace</option><option value="sans">Sans-serif</option><option value="serif">Serif</option></select></label>
+      <label>Editor font size <input name="fontSize" type="number" min="10" max="32"></label>
+      <label>Preview font size <input name="previewFontSize" type="number" min="10" max="32"></label>
+      <label>Preview width
+        <select name="previewWidth"><option value="narrow">Narrow</option><option value="normal">Normal</option><option value="wide">Wide</option><option value="full">Full</option></select></label>
+      <label>Tab size <input name="tabSize" type="number" min="1" max="8"></label>
+      <label class="chk"><input name="lineNumbers" type="checkbox"> Line numbers</label>
+      <label class="chk"><input name="lineWrapping" type="checkbox"> Wrap lines</label>
+      <label class="chk"><input name="spellcheck" type="checkbox"> Spell check</label>
+      <label class="chk"><input name="syncScroll" type="checkbox"> Sync scrolling</label>
+      <label class="chk"><input name="autoPairs" type="checkbox"> Auto-close brackets</label>
+      <label class="chk"><input name="typewriter" type="checkbox"> Typewriter scrolling</label>
+      <label class="chk"><input name="math" type="checkbox"> Math (KaTeX)</label>
+      <label class="chk"><input name="mathToolbar" type="checkbox"> Math toolbar</label>
+      <label class="chk"><input name="mermaid" type="checkbox"> Mermaid diagrams</label>
+      <label class="chk"><input name="breaks" type="checkbox"> Line breaks as &lt;br&gt;</label>
+    </div>
+    <div class="dlg-actions">
+      <button value="reset" class="btn" id="settings-reset">Reset defaults</button>
+      <button value="close" class="btn primary">Done</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="help-dlg" class="dlg">
+  <form method="dialog">
+    <h2>Keyboard shortcuts</h2>
+    <div class="help-cols">
+      <table>
+        <tr><th colspan="2">File &amp; view</th></tr>
+        <tr><td>Ctrl+Alt+N</td><td>New document</td></tr>
+        <tr><td>Ctrl+O</td><td>Open file</td></tr>
+        <tr><td>Ctrl+S</td><td>Save to file</td></tr>
+        <tr><td>Ctrl+Shift+S</td><td>Save as</td></tr>
+        <tr><td>Ctrl+Alt+1 / 2 / 3</td><td>Edit / Split / Preview</td></tr>
+        <tr><td>Ctrl+Alt+M</td><td>Cycle view mode</td></tr>
+        <tr><td>Ctrl+\</td><td>Toggle sidebar</td></tr>
+        <tr><td>Ctrl+Shift+F</td><td>Focus mode</td></tr>
+        <tr><td>Ctrl+F / Ctrl+H</td><td>Find / Replace</td></tr>
+        <tr><td>F1</td><td>This help</td></tr>
+      </table>
+      <table>
+        <tr><th colspan="2">Formatting</th></tr>
+        <tr><td>Ctrl+B</td><td>Bold</td></tr>
+        <tr><td>Ctrl+I</td><td>Italic</td></tr>
+        <tr><td>Ctrl+Shift+X</td><td>Strikethrough</td></tr>
+        <tr><td>Ctrl+K</td><td>Link</td></tr>
+        <tr><td>Ctrl+`</td><td>Inline code</td></tr>
+        <tr><td>Ctrl+Alt+C</td><td>Code block</td></tr>
+        <tr><td>Ctrl+Shift+H</td><td>Cycle heading level</td></tr>
+        <tr><td>Ctrl+Shift+.</td><td>Blockquote</td></tr>
+        <tr><td>Ctrl+Shift+L</td><td>Toggle task checkbox</td></tr>
+        <tr><td>Ctrl+Alt+T</td><td>Format table</td></tr>
+        <tr><td>Alt+↑ / Alt+↓</td><td>Move line</td></tr>
+        <tr><td>Ctrl+D</td><td>Duplicate line</td></tr>
+        <tr><td>Tab / Shift+Tab</td><td>Indent / outdent</td></tr>
+        <tr><td>Tab (in math)</td><td>Jump to next empty {}</td></tr>
+      </table>
+    </div>
+    <p class="hint">Tips: drop a .md file anywhere to open it · paste an image to embed it · paste a URL over selected text to make a link · click checkboxes in the preview to toggle them · double-click the preview to jump to that spot in the source.</p>
+    <div class="dlg-actions"><button class="btn primary">Close</button></div>
+  </form>
+</dialog>
+
+<div id="dropzone" class="dropzone" hidden><div>Drop a Markdown file to open it, or an image to insert it</div></div>
+<div id="toast" class="toast" hidden></div>
+<input type="file" id="file-input" accept=".md,.markdown,.mdown,.mkd,.txt,text/markdown,text/plain" hidden>
+
+<script type="text/plain" id="welcome-md"># Welcome to Markdown Editor
+
+A fast, offline Markdown editor with live preview. Everything you type is saved automatically in this browser (see the **Documents** list on the left). Use **File → Save to file** (`Ctrl+S`) to write a real `.md` file on disk, and **File → Open** (`Ctrl+O`) to edit existing files.
+
+[TOC]
+
+## Views
+
+Switch between **Edit**, **Split**, and **Preview** with the buttons at the top right or `Ctrl+Alt+1` / `2` / `3`. Drag the divider to resize the panes (double-click it to reset). Scrolling is synced between the panes, and double-clicking the preview jumps to that spot in the source.
+
+## Formatting
+
+You can write *italic*, **bold**, ~~strikethrough~~, ==highlight==, `inline code`, and [links](https://commonmark.org). Select some text and paste a URL to turn it into a link.
+
+> Blockquotes work too,
+> and they can span several lines.
+
+### Lists
+
+- Bullet lists continue when you press Enter
+  - and nest with Tab
+- Press Enter on an empty item to end the list
+
+1. Numbered lists
+2. work the same way
+
+### Task lists
+
+- [x] Click the checkboxes in the preview
+- [ ] They update the source
+- [ ] `Ctrl+Shift+L` toggles the one under the cursor
+
+## Code
+
+```js
+function greet(name) {
+  return `Hello, ${name}!`;
+}
+```
+
+```python
+def fib(n):
+    a, b = 0, 1
+    for _ in range(n):
+        a, b = b, a + b
+    return a
+```
+
+## Tables
+
+| Feature        |  Shortcut  |           Notes |
+|:---------------|:----------:|----------------:|
+| Bold           |   Ctrl+B   |         toggles |
+| Format a table | Ctrl+Alt+T |  aligns columns |
+
+## Math
+
+Inline math like $e^{i\pi} + 1 = 0$, and display math:
+
+$$
+\int_{-\infty}^{\infty} e^{-x^2}\,dx = \sqrt{\pi}
+$$
+
+## Diagrams
+
+```mermaid
+graph LR
+  A[Write] --> B{Happy?}
+  B -->|Yes| C[Save]
+  B -->|No| A
+```
+
+## Extras
+
+<details>
+<summary>Collapsible sections</summary>
+
+Raw HTML such as `<details>` is allowed (and sanitized).
+
+</details>
+
+Footnotes are supported too.[^1]
+
+[^1]: They show up at the bottom of the preview.
+
+---
+
+Press **F1** to see every keyboard shortcut.
+</script>
+
+<script src="vendor/codemirror.min.js"></script>
+<script src="vendor/addon-overlay.min.js"></script>
+<script src="vendor/meta.min.js"></script>
+<script src="vendor/mode-xml.min.js"></script>
+<script src="vendor/mode-javascript.min.js"></script>
+<script src="vendor/mode-css.min.js"></script>
+<script src="vendor/mode-python.min.js"></script>
+<script src="vendor/mode-shell.min.js"></script>
+<script src="vendor/mode-clike.min.js"></script>
+<script src="vendor/mode-yaml.min.js"></script>
+<script src="vendor/mode-markdown.min.js"></script>
+<script src="vendor/mode-gfm.min.js"></script>
+<script src="vendor/addon-continuelist.min.js"></script>
+<script src="vendor/addon-active-line.min.js"></script>
+<script src="vendor/addon-closebrackets.min.js"></script>
+<script src="vendor/addon-searchcursor.min.js"></script>
+<script src="vendor/addon-placeholder.min.js"></script>
+<script src="vendor/marked.min.js"></script>
+<script src="vendor/purify.min.js"></script>
+<script src="vendor/highlight.min.js"></script>
+<script src="vendor/katex/katex.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
