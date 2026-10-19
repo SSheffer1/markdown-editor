@@ -77,6 +77,10 @@ vendor/      Third-party libraries (CodeMirror 5, marked, DOMPurify,
              highlight.js, KaTeX + fonts, Mermaid)
 ```
 
+## To-do
+- node package manager
+- adjust about/readme
+
 ## Data and privacy
 
 Documents and settings stay in your browser (IndexedDB and `localStorage`). Nothing is uploaded. If you clear site data for the page, documents you haven't saved to files are lost. Deleting a document in the app never deletes its file on disk.
